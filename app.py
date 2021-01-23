@@ -5,6 +5,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 from flask import Flask, jsonify
+import datetime as dt
 
 # Database Setup
 engine = create_engine("sqlite:///D:\Data Science\HW\8-SQLAlchemy\SQLAlchemy-Challenge\Resources/hawaii.sqlite")
@@ -31,8 +32,8 @@ def welcome():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start><br/>"
-        f"/api/v1.0/<start>/<end>"
+        f"/api/v1.0/&ltstart&gt<br/>"
+        f"/api/v1.0/&ltstart&gt/&ltend&gt"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -67,6 +68,28 @@ def stations():
 
     return jsonify(stations)
 
+@app.route("/api/v1.0/tobs")
+def tobs():
+    # Create session (link) from Python to the DB
+    session = Session(engine)
+
+    # Query one year of temperature observations from the most active station
+    one_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+    results = session.query(Measurement.tobs).\
+                    filter(Measurement.station == 'USC00519281').\
+                    filter(Measurement.date >= one_year).all()
+
+    session.close()
+
+    # Convert list of tuples into normal list
+    tobs = list(np.ravel(results))
+
+    return jsonify(tobs)
+
+@app.route("/api/v1.0/<start>")
+@app.route("/api/v1.0/<start>/<end>")
+def start_end():
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
