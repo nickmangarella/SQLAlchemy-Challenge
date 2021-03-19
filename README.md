@@ -1,4 +1,4 @@
-# SQLAlchemy-Challenge
+# hawaii-weather-stats
 
 ## Description
 Climate, Temperature, and Rainfall analysis on Honolulu, Hawaii using SQLAlchemy and Flask modules.
