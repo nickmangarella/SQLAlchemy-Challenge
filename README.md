@@ -1,7 +1,7 @@
-# hawaii-weather-stats
+# hawaii-weather-analysis
 
 ## Description
-Climate, Temperature, and Rainfall analysis of Honolulu, Hawaii using SciPy Statistics, SQLAlchemy, and Flask.
+Climate, Temperature, and Rainfall analysis of Honolulu, Hawaii using SciPy Stats, SQLAlchemy, and Flask.
 
 ## Climate Analysis
 ### Reflect Tables into SQLAlchemy ORM
@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
 # Create engine to hawaii.sqlite
-engine = create_engine("sqlite:///D:\Data Science\HW\8-SQLAlchemy\SQLAlchemy-Challenge\Resources/hawaii.sqlite")
+engine = create_engine("sqlite:///D:\Data Science\HW\8-SQLAlchemy\hawaii-weather-analysis\Resources\hawaii.sqlite")
 
 # Reflect an existing database into a new model
 Base = automap_base()
@@ -104,14 +104,18 @@ plt.ylabel("Frequency")
 plt.show()
 ```
 
-## Temp Analysis 1
+## temp_analysis_1
 ### Temperature Analysis I
 * Python Datetime and SciPy Stats modules
 * Read in of the temperature measurements CSV and DataFrame setup
-    #### Compare June and December data across all years
-    * Filters of the data for June and December
-    * Calculations of average temperature for June and December from entire dataset
-    * Unpaired t-test of June and December temperatures
+
+### Compare June and December data across all years
+* Filters of the data for June and December
+* Calculations of average temperature for June and December from entire dataset
+* Unpaired t-test of June and December temperatures
+```
+Ttest_indResult(statistic=31.60372399000329, pvalue=3.9025129038616655e-191)
+```
 
 ## Temp Analysis 2
 ### Reflect Tables into SQLAlchemy ORM
@@ -122,11 +126,73 @@ plt.show()
 * Function named 'calc_temps' that accepts start and end dates to return the temperature mininum, average, and maximum for the range of dates
 * 'calc_temps' function to return temperature minimums, averages, and maximums for a week in August 2017
 * Matplotlib bar chart of the results from 'calc_temps' function for the week in August 2017
-    #### Daily Rainfall Average
-    * Query to select station location data and total amount of rainfall for the same week in August 2017
-    * Function named 'daily_normals' that accepts a month and day date and returns the temperature minimum, average, and maximum
-    * For loop with 'daily_normals' function to return the temperature miminums, averages, and maximums for the same August week
-    * Results saved as a DataFrame and a Pandas area plot of the results
+```
+# Calculate the total amount of rainfall per weather station for your trip dates using the previous year's 
+# matching dates.
+# Sort this in descending order by precipitation amount and list the station, name, latitude, longitude, and elevation
+
+sel = [Station.station, Station.name, Station.latitude, Station.longitude, Station.elevation, func.sum(Measurement.prcp)]
+
+results = session.query(*sel).\
+    filter(Measurement.station == Station.station).\
+    filter(Measurement.date >= '2017-08-01').\
+    filter(Measurement.date <= '2017-08-07').\
+    group_by(Station.station).\
+    order_by(func.sum(Measurement.prcp).desc()).all()
+```
+
+### Daily Rainfall Average
+* Query to select station location data and total amount of rainfall for the same week in August 2017
+* Function named 'daily_normals' that accepts a month and day date and returns the temperature minimum, average, and maximum
+* For loop with 'daily_normals' function to return the temperature miminums, averages, and maximums for the same August week
+* Results saved as a DataFrame and a Pandas area plot of the results
+```
+# Calculate the total amount of rainfall per weather station for your trip dates using the previous year's 
+# matching dates.
+# Sort this in descending order by precipitation amount and list the station, name, latitude, longitude, and elevation
+
+sel = [Station.station, Station.name, Station.latitude, Station.longitude, Station.elevation, func.sum(Measurement.prcp)]
+
+results = session.query(*sel).\
+    filter(Measurement.station == Station.station).\
+    filter(Measurement.date >= '2017-08-01').\
+    filter(Measurement.date <= '2017-08-07').\
+    group_by(Station.station).\
+    order_by(func.sum(Measurement.prcp).desc()).all()
+
+print(results)
+
+def daily_normals(date):
+  sel = [func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+    return session.query(*sel).filter(func.strftime("%m-%d", Measurement.date) == date).all()
+
+# Calculate the daily normals for your trip
+# and push each tuple of calculations into a list called `normals`
+
+# Set the start and end date of the trip
+start_date = '2017-08-01'
+end_date = '2017-08-07'
+
+# Use the start and end date to create a range of dates
+dates_range = pd.date_range(start_date, end_date, freq='D')
+
+# Store 'dates_range' as a list called 'trip_dates' for plotting
+trip_dates = list(np.ravel((dates_range.strftime('%Y-%m-%d'))))
+
+# Strip off the year and save a list of strings in the format %m-%d
+trip_month_day = list(np.ravel(dates_range.strftime('%m-%d')))
+
+# Use the `daily_normals` function to calculate the normals for each date string 
+# and append the results to a list called `normals`.
+normals = []
+
+for x in trip_month_day:
+    normals.append(list(np.ravel(daily_normals(x))))
+    
+# Load the previous query results into a Pandas DataFrame and add the `trip_dates` range as the `date` index
+trip_normals = pd.DataFrame(normals, index=trip_dates, columns=['tmin', 'tavg', 'tmax'])
+trip_normals.index.names = ['date']
+```
 
 ## App.py
 * Python SQL toolkit, Object Relational Mapper, Flask, and Python Datetime modules
@@ -138,28 +204,6 @@ plt.show()
 * Route to Start Date page and 'start' function that returns a list in JSON format of temperature minimums, averages, and maximums from a any chosen start date to the latest date in the dataset
 * Route to Start and End Date page and 'start_end' function that returns a list in JSON format of temperature minimums, averages, and maximums from a any chosen start and end dates in the dataset
 ```
-# Dependencies and Setup
-import numpy as np
-import sqlalchemy
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine, func
-from flask import Flask, jsonify
-import datetime as dt
-
-# Database Setup
-engine = create_engine("sqlite:///D:\Data Science\HW\8-SQLAlchemy\SQLAlchemy-Challenge\Resources/hawaii.sqlite")
-
-# Reflect an existing database into a new model
-Base = automap_base()
-
-# Reflect the tables
-Base.prepare(engine, reflect=True)
-
-# Save reference to the table
-Measurement = Base.classes.measurement
-Station = Base.classes.station
-
 # Flask Setup
 app = Flask(__name__)
 
@@ -178,58 +222,48 @@ def welcome():
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    # Create our session (link) from Python to the DB
-    session = Session(engine)
+
+    # Calculate the date from 1 year ago
+    one_year = dt.date(2017, 8, 23) - dt.datetime(days)
 
     # Query date and prcp
-    results = session.query(Measurement.date, Measurement.prcp).all()
-
-    session.close()
+    prcp_scores = session.query(Measurement.date, Measurement.prcp).\
+        filter(Measurement.date >= one_year).all()
 
     # Create a dictionary from results
     precipitation_dict = {}
-    for date, prcp in results:
+    for date, prcp in prcp_scores:
         precipitation_dict[date] = prcp
     
     return jsonify(precipitation_dict)
 
 @app.route("/api/v1.0/stations")
 def stations():
-    # Create session (link) from Python to the DB
-    session = Session(engine)
 
     # Query stations
     results = session.query(Station.station).all()
 
-    session.close()
-
     # Convert list of tuples into normal list
     stations = list(np.ravel(results))
 
-    return jsonify(stations)
+    return jsonify(stations=stations)
 
 @app.route("/api/v1.0/tobs")
 def tobs():
-    # Create session (link) from Python to the DB
-    session = Session(engine)
 
     # Query one year of temperature observations from the most active station
     one_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
     results = session.query(Measurement.tobs).\
-                    filter(Measurement.station == 'USC00519281').\
-                    filter(Measurement.date >= one_year).all()
-
-    session.close()
+        filter(Measurement.station == 'USC00519281').\
+        filter(Measurement.date >= one_year).all()
 
     # Convert list of tuples into normal list
     tobs = list(np.ravel(results))
 
-    return jsonify(tobs)
+    return jsonify(tobs=tobs)
 
 @app.route("/api/v1.0/<start>")
 def start(start):
-    # Create session (link) from Python to the DB
-    session = Session(engine)
     
     # Query the min. max, and average tobs for a given start and start-end dates 
     sel = [func.min(Measurement.tobs),
@@ -238,19 +272,15 @@ def start(start):
     start_date = dt.datetime.strptime(start, "%Y-%m-%d")
     
     results = session.query(*sel).\
-                    filter(Measurement.date >= start_date).all()
-    
-    session.close()
+        filter(Measurement.date >= start_date).all()
 
     # List of temp min, avg, and max
     start_tobs = list(np.ravel(results))
 
-    return jsonify(start_tobs)
+    return jsonify(start_tobs=start_tobs)
 
 @app.route("/api/v1.0/<start>/<end>")
 def start_end(start, end):
-    # Create session (link) from Python to the DB
-    session = Session(engine)
     
     # Query the min. max, and average tobs for a given start and start-end dates 
     sel = [func.min(Measurement.tobs),
@@ -260,15 +290,13 @@ def start_end(start, end):
     end_date = dt.datetime.strptime(end, "%Y-%m-%d")
     
     results = session.query(*sel).\
-                    filter(Measurement.date >= start_date).\
-                    filter(Measurement.date <= end_date).all()
-    
-    session.close()
+        filter(Measurement.date >= start_date).\
+        filter(Measurement.date <= end_date).all()
 
     # List of temp min, avg, and max
     start_end_tobs = list(np.ravel(results))
 
-    return jsonify(start_end_tobs)
+    return jsonify(start_end_tobs=start_end_tobs)
 
 if __name__ == '__main__':
     app.run(debug=True)
