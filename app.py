@@ -8,7 +8,7 @@ from flask import Flask, jsonify
 import datetime as dt
 
 # Database Setup
-engine = create_engine("sqlite:///D:\Data Science\HW\8-SQLAlchemy\SQLAlchemy-Challenge\Resources/hawaii.sqlite")
+engine = create_engine("sqlite:///D:\Data Science\HW\8-SQLAlchemy\hawaii-weather-analysis\Resources\hawaii.sqlite")
 
 # Reflect an existing database into a new model
 Base = automap_base()
@@ -19,6 +19,9 @@ Base.prepare(engine, reflect=True)
 # Save reference to the table
 Measurement = Base.classes.measurement
 Station = Base.classes.station
+
+# Create our session (link) from Python to the DB
+session = Session(engine)
 
 # Flask Setup
 app = Flask(__name__)
@@ -38,58 +41,48 @@ def welcome():
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    # Create our session (link) from Python to the DB
-    session = Session(engine)
+
+    # Calculate the date from 1 year ago
+    one_year = dt.date(2017, 8, 23) - dt.datetime(days)
 
     # Query date and prcp
-    results = session.query(Measurement.date, Measurement.prcp).all()
-
-    session.close()
+    prcp_scores = session.query(Measurement.date, Measurement.prcp).\
+        filter(Measurement.date >= one_year).all()
 
     # Create a dictionary from results
     precipitation_dict = {}
-    for date, prcp in results:
+    for date, prcp in prcp_scores:
         precipitation_dict[date] = prcp
     
     return jsonify(precipitation_dict)
 
 @app.route("/api/v1.0/stations")
 def stations():
-    # Create session (link) from Python to the DB
-    session = Session(engine)
 
     # Query stations
     results = session.query(Station.station).all()
 
-    session.close()
-
     # Convert list of tuples into normal list
     stations = list(np.ravel(results))
 
-    return jsonify(stations)
+    return jsonify(stations=stations)
 
 @app.route("/api/v1.0/tobs")
 def tobs():
-    # Create session (link) from Python to the DB
-    session = Session(engine)
 
     # Query one year of temperature observations from the most active station
     one_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
     results = session.query(Measurement.tobs).\
-                    filter(Measurement.station == 'USC00519281').\
-                    filter(Measurement.date >= one_year).all()
-
-    session.close()
+        filter(Measurement.station == 'USC00519281').\
+        filter(Measurement.date >= one_year).all()
 
     # Convert list of tuples into normal list
     tobs = list(np.ravel(results))
 
-    return jsonify(tobs)
+    return jsonify(tobs=tobs)
 
 @app.route("/api/v1.0/<start>")
 def start(start):
-    # Create session (link) from Python to the DB
-    session = Session(engine)
     
     # Query the min. max, and average tobs for a given start and start-end dates 
     sel = [func.min(Measurement.tobs),
@@ -98,19 +91,15 @@ def start(start):
     start_date = dt.datetime.strptime(start, "%Y-%m-%d")
     
     results = session.query(*sel).\
-                    filter(Measurement.date >= start_date).all()
-    
-    session.close()
+        filter(Measurement.date >= start_date).all()
 
     # List of temp min, avg, and max
     start_tobs = list(np.ravel(results))
 
-    return jsonify(start_tobs)
+    return jsonify(start_tobs=start_tobs)
 
 @app.route("/api/v1.0/<start>/<end>")
 def start_end(start, end):
-    # Create session (link) from Python to the DB
-    session = Session(engine)
     
     # Query the min. max, and average tobs for a given start and start-end dates 
     sel = [func.min(Measurement.tobs),
@@ -120,15 +109,13 @@ def start_end(start, end):
     end_date = dt.datetime.strptime(end, "%Y-%m-%d")
     
     results = session.query(*sel).\
-                    filter(Measurement.date >= start_date).\
-                    filter(Measurement.date <= end_date).all()
-    
-    session.close()
+        filter(Measurement.date >= start_date).\
+        filter(Measurement.date <= end_date).all()
 
     # List of temp min, avg, and max
     start_end_tobs = list(np.ravel(results))
 
-    return jsonify(start_end_tobs)
+    return jsonify(start_end_tobs=start_end_tobs)
 
 if __name__ == '__main__':
     app.run(debug=True)
